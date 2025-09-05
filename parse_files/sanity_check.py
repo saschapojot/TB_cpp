@@ -5,17 +5,15 @@ import json
 import numpy as np
 
 
-numArgErr=4
+jsonErr=4
 valErr=5
 matrix_not_exist_error=6
 matrix_cond_error=7
 atom_position_error=8
 duplicate_position_error=9
+#This script runs a basic sanity check of data in conf file
 
-if (len(sys.argv) != 1):  # Only script name, no additional arguments
-    print("wrong number of arguments for sanity_check.py")
-    print("usage: python3 sanity_check.py (receives config via stdin)")
-    exit(numArgErr)
+
 
 
 # Read JSON data from stdin
@@ -25,11 +23,11 @@ try:
 
 except json.JSONDecodeError as e:
     print(f"Error parsing JSON input: {e}")
-    exit(valErr)
+    exit(jsonErr)
 
 
 #####################################################################################
-#check matricex
+#check matrices
 def check_matrix_condition(matrix, matrix_name="Matrix", det_threshold=1e-12, cond_threshold=1e12):
     """
 
@@ -223,6 +221,6 @@ is_valid, error_msg = check_duplicate_positions(parsed_config)
 if not is_valid:
     print(f"Error: {error_msg}")
     exit(duplicate_position_error)
-
+#check space group
 
 print("SUCCESS: All sanity checks passed!")

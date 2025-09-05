@@ -3,7 +3,7 @@ import sys
 import json
 import os
 
-# Parse xxx.conf file
+# this script parses xxx.conf file
 fmtErrStr = "format error: "
 formatErrCode = 1
 valueMissingCode = 2

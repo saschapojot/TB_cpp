@@ -91,6 +91,8 @@ except json.JSONDecodeError as e:
     print(confResult.stdout)
     exit(1)
 
+# Convert parsed_config back to JSON string for passing to subprocess
+config_json = json.dumps(parsed_config)
 ##end parsing conf
 #########################################################################################
 
@@ -100,8 +102,7 @@ except json.JSONDecodeError as e:
 print("\n" + "=" * 60)
 print("RUNNING SANITY CHECK")
 print("=" * 60)
-# Convert parsed_config back to JSON string for passing to subprocess
-config_json = json.dumps(parsed_config)
+
 # Run sanity_check.py and pass the JSON data via stdin
 sanity_result = subprocess.run(
     ["python3", "./parse_files/sanity_check.py"],
@@ -124,4 +125,38 @@ else:
     print("Output:")
     print(sanity_result.stdout)
 #end sanity check
+#########################################################################################
+
+
+#########################################################################################
+# computing space group representations
+
+print("\n" + "=" * 60)
+print("COMPUTING SPACE GROUP REPRESENTATIONS")
+print("=" * 60)
+
+# Run generate_space_group_representations.py and pass the JSON data via stdin
+sgr_result = subprocess.run(
+    ["python3", "./symmetry/generate_space_group_representations.py"],
+    input=config_json,
+    capture_output=True,
+    text=True
+)
+
+print(f"Exit code: {sgr_result.returncode}")
+# Check space group representations results
+if sgr_result.returncode != 0:
+    print("Space group representations generation failed!")
+    print(f"return code={sgr_result.returncode}")
+    print("Error output:")
+    print(sgr_result.stderr)
+    print("Standard output:")
+    print(sgr_result.stdout)
+    exit(sgr_result.returncode)
+else:
+    print("Space group representations generated successfully!")
+    print("Output:")
+    print(sgr_result.stdout)
+
+# end computing space group representations
 #########################################################################################
