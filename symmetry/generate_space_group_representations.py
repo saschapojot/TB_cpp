@@ -124,6 +124,15 @@ def read_space_group(in_space_group_file, space_group_num):
     # If space group not found
     raise ValueError(f"Space group {space_group_num} not found in {in_space_group_file}")
 
+def space_group_conv_to_cartesian_basis(space_group_matrices,space_group_basis):
+    """
+
+    :param space_group_matrices: space group operators (affine)
+    :param space_group_basis: the basis of space_group_matrices, under Cartesian coordinates
+    :return: space group operators under Cartesian coordinates
+    """
+
+
 in_space_group_file="./read_only/space_group_matrices_Bilbao.txt"
 space_group_matrices=read_space_group(in_space_group_file,225)
-print(space_group_matrices)
+# print(space_group_matrices)
