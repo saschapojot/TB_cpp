@@ -18,34 +18,33 @@ except json.JSONDecodeError as e:
     print(f"Error parsing JSON input: {e}")
     exit(json_err_code)
 
-## assume that everything is under conventional basis
+## assume that everything is under primitive cell basis
 
 # Fetch all space group related data
 try:
-    lattice_basis = parsed_config['lattice_basis']
+    #primitive cell lattice basis
+    lattice_basis_primitive = parsed_config['lattice_basis']
+    lattice_basis_primitive=np.array(lattice_basis_primitive)
+    # print(f"lattice_basis={lattice_basis}")
     space_group = parsed_config['space_group']
+    # print(f"space_group={space_group}, {type(space_group)}")
     space_group_origin = parsed_config['space_group_origin']
+    space_group_origin=np.array(space_group_origin)
+    # print(f"space_group_origin={space_group_origin}")
     space_group_basis = parsed_config['space_group_basis']
+    space_group_basis=np.array(space_group_basis)
+    # print(f"space_group_basis={space_group_basis}")
 
     # Validate data
-    if not lattice_basis:
-        raise ValueError("lattice_basis is empty")
-    if not space_group:
-        raise ValueError("space_group is empty")
-    if space_group_origin is None:
-        raise ValueError("space_group_origin is None")
-    if space_group_basis is None:
-        raise ValueError("space_group_basis is None")
+    # if not lattice_basis:
+    #     raise ValueError("lattice_basis is empty")
+    # if not space_group:
+    #     raise ValueError("space_group is empty")
+    # if space_group_origin is None:
+    #     raise ValueError("space_group_origin is None")
+    # if space_group_basis is None:
+    #     raise ValueError("space_group_basis is None")
 
-    # Convert to numpy arrays
-    lattice_basis_np = np.array(lattice_basis)
-    origin_np = np.array(space_group_origin)
-    basis_np = np.array(space_group_basis)
-
-    # print(f"Lattice basis shape: {lattice_basis_np.shape}")
-    # print(f"Space group: {space_group}")
-    # print(f"Space group origin: {space_group_origin}")
-    # print(f"Space group basis shape: {basis_np.shape}")
 
 except KeyError as e:
     print(f"Error: Required key {e} not found in configuration")
@@ -124,15 +123,52 @@ def read_space_group(in_space_group_file, space_group_num):
     # If space group not found
     raise ValueError(f"Space group {space_group_num} not found in {in_space_group_file}")
 
-def space_group_conv_to_cartesian_basis(space_group_matrices,space_group_basis):
+def space_group_to_cartesian_basis(space_group_matrices,space_group_basis):
+    """
+    GetSymXyz(SymLvSG,LvSG) in cd/SymGroup.py
+    :param space_group_matrices: space group operators (affine)
+    :param space_group_basis: the basis of space_group_matrices, each row is a basis, under Cartesian coordinates
+    :return: space group operators under Cartesian coordinates, dim: num_operators by 3 by 4
+    """
+    A=space_group_basis
+    AT=space_group_basis.T
+    AT_inv=np.linalg.inv(AT)
+
+    num_operators=len(space_group_matrices)
+
+    space_group_matrices_cartesian=np.zeros((num_operators,3,4),dtype=float)
+    for j in range(0,num_operators):
+        space_group_matrices_cartesian[j,:,0:3]=AT @ space_group_matrices[j,:,0:3] @AT_inv
+        space_group_matrices_cartesian[j,:,3]=AT@space_group_matrices[j,:,3]
+
+    return space_group_matrices_cartesian
+
+
+
+def space_group_to_primitive_cell_basis(space_group_matrices_cartesian,lattice_basis_primitive):
     """
 
-    :param space_group_matrices: space group operators (affine)
-    :param space_group_basis: the basis of space_group_matrices, under Cartesian coordinates
-    :return: space group operators under Cartesian coordinates
+    :param space_group_matrices_cartesian: space group operators (affine) under Cartesian basis
+    :param lattice_basis_primitive: primitive cell basis, each row is a basis, under Cartesian coordinates
+    :return: space group operators (affine) under primitive cell basis, dim: num_operators by 3 by 4
     """
+    B=lattice_basis_primitive
+
+    BT=B.T
+    BT_inv=np.linalg.inv(BT)
+    num_operators=len(space_group_matrices)
+    space_group_matrices_primitive=np.zeros((num_operators,3,4),dtype=float)
+    for j in range(0,num_operators):
+        space_group_matrices_primitive[j,:,0:3]=BT_inv@space_group_matrices_cartesian[j,:,0:3] @ BT
+        space_group_matrices_primitive[j,:,3]=BT_inv @space_group_matrices_cartesian[j,:,3]
+    return space_group_matrices_primitive
+
 
 
 in_space_group_file="./read_only/space_group_matrices_Bilbao.txt"
-space_group_matrices=read_space_group(in_space_group_file,225)
-# print(space_group_matrices)
+space_group_matrices=read_space_group(in_space_group_file,space_group)
+space_group_matrices_cartesian=space_group_to_cartesian_basis(space_group_matrices,space_group_basis)
+space_group_matrices_primitive=space_group_to_primitive_cell_basis(space_group_matrices_cartesian,lattice_basis_primitive)
+print(f"space_group_matrices[-1,:,:]={space_group_matrices[-1,:,:]}")
+print(f"space_group_matrices_cartesian[-1,:,:]={space_group_matrices_cartesian[-1,:,:]}")
+print(f"space_group_matrices_primitive[-1,:,:]={space_group_matrices_primitive[-1,:,:]}")
