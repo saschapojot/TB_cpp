@@ -2,6 +2,7 @@ import numpy as np
 import sys
 import json
 import re
+import copy
 #original file: /home/adada/Documents/pyCode/TB/cd/SymGroup.py
 # this script computes space group representations
 json_err_code=4
@@ -163,12 +164,177 @@ def space_group_to_primitive_cell_basis(space_group_matrices_cartesian,lattice_b
         space_group_matrices_primitive[j,:,3]=BT_inv @space_group_matrices_cartesian[j,:,3]
     return space_group_matrices_primitive
 
+#TODO: double check this function
+def space_group_representation_D_orbitals(R):
+    """
+
+    function GetSymD(R) in cd/SymGroup.py
+    :param R: linear part of space group, under Cartesian basis
+    :return: representation of space group on d orbitals
+    """
+    [[R_11, R_12, R_13], [R_21, R_22, R_23], [R_31, R_32, R_33]] = R
+    RD = np.zeros((5,5))
+    sr3 = np.sqrt(3)
+    #
+    RD[0,0] = R_11*R_22+R_12*R_21
+    RD[0,1] = R_21*R_32+R_22*R_31
+    RD[0,2] = R_11*R_32+R_12*R_31
+    RD[0,3] = 2*R_11*R_12+R_31*R_32
+    RD[0,4] = sr3*R_31*R_32
+    #
+    RD[1,0] = R_12*R_23+R_13*R_22
+    RD[1,1] = R_22*R_33+R_23*R_32
+    RD[1,2] = R_12*R_33+R_13*R_32
+    RD[1,3] = 2*R_12*R_13+R_32*R_33
+    RD[1,4] = sr3*R_32*R_33
+    #
+    RD[2,0] = R_11*R_23+R_13*R_21
+    RD[2,1] = R_21*R_33+R_23*R_31
+    RD[2,2] = R_11*R_33+R_13*R_31
+    RD[2,3] = 2*R_11*R_13+R_31*R_33
+    RD[2,4] = sr3*R_31*R_33
+    #
+    RD[3,0] = R_11*R_21-R_12*R_22
+    RD[3,1] = R_21*R_31-R_22*R_32
+    RD[3,2] = R_11*R_31-R_12*R_32
+    RD[3,3] = (R_11**2-R_12**2 )+1/2*(R_31**2-R_32**2 )
+    RD[3,4] = sr3/2*(R_31**2-R_32**2 )
+    #
+    RD[4,0] = 1/sr3*(2*R_13*R_23-R_11*R_21-R_12*R_22)
+    RD[4,1] = 1/sr3*(2*R_23*R_33-R_21*R_31-R_22*R_32)
+    RD[4,2] = 1/sr3*(2*R_13*R_33-R_11*R_31-R_12*R_32)
+    RD[4,3] = 1/sr3*(2*R_13**2-R_11**2-R_12**2 )+1/sr3/2*(2*R_33**2-R_31**2-R_32**2 )
+    RD[4,4] = 1/2*(2*R_33**2-R_31**2-R_32**2 )
+
+    return RD.T
+
+#TODO: double check this function
+def space_group_representation_F_orbitals(R):
+    """
+    function GetSymF(R) in cd/SymGroup.py
+    :param R: linear part of space group, under Cartesian basis
+    :return: representation of space group on f orbitals
+    """
+    sr3 = np.sqrt(3); sr5 = np.sqrt(5); sr15 = np.sqrt(15)
+    x1x2x3 = np.array([[ 1, 1, 1], # x3
+                       [ 2, 2, 2], # y3
+                       [ 3, 3, 3], # z3
+                       [ 1, 1, 2], # x2y
+                       [ 1, 2, 2], # xy2
+                       [ 1, 1, 3], # x2z
+                       [ 1, 3, 3], # xz2
+                       [ 2, 2, 3], # y2z
+                       [ 2, 3, 3], # yz2
+                       [ 1, 2, 3]  # xyz
+                       ],int)
+    # 10*10, x3~xyz, a~j
+    Rx1x2x3 = np.zeros((10,10))
+    for i in range(10):
+        n1,n2,n3 = x1x2x3[i]
+        Rx1x2x3[i,0] = R[ 1- 1,n1- 1] * R[ 1- 1,n2- 1] * R[ 1- 1,n3- 1] # a
+        Rx1x2x3[i,1] = R[ 2- 1,n1- 1] * R[ 2- 1,n2- 1] * R[ 2- 1,n3- 1] # b
+        Rx1x2x3[i,2] = R[ 3- 1,n1- 1] * R[ 3- 1,n2- 1] * R[ 3- 1,n3- 1] # c
+        Rx1x2x3[i,3] = R[ 1- 1,n1- 1] * R[ 1- 1,n2- 1] * R[ 2- 1,n3- 1] \
+                       + R[ 1- 1,n1- 1] * R[ 2- 1,n2- 1] * R[ 1- 1,n3- 1] \
+                       + R[ 2- 1,n1- 1] * R[ 1- 1,n2- 1] * R[ 1- 1,n3- 1] # d
+        Rx1x2x3[i,4] = R[ 1- 1,n1- 1] * R[ 2- 1,n2- 1] * R[ 2- 1,n3- 1] \
+                       + R[ 2- 1,n1- 1] * R[ 2- 1,n2- 1] * R[ 1- 1,n3- 1] \
+                       + R[ 2- 1,n1- 1] * R[ 1- 1,n2- 1] * R[ 2- 1,n3- 1] # e
+        Rx1x2x3[i,5] = R[ 1- 1,n1- 1] * R[ 1- 1,n2- 1] * R[ 3- 1,n3- 1] \
+                       + R[ 1- 1,n1- 1] * R[ 3- 1,n2- 1] * R[ 1- 1,n3- 1] \
+                       + R[ 3- 1,n1- 1] * R[ 1- 1,n2- 1] * R[ 1- 1,n3- 1] # f
+        Rx1x2x3[i,6] = R[ 1- 1,n1- 1] * R[ 3- 1,n2- 1] * R[ 3- 1,n3- 1] \
+                       + R[ 3- 1,n1- 1] * R[ 3- 1,n2- 1] * R[ 1- 1,n3- 1] \
+                       + R[ 3- 1,n1- 1] * R[ 1- 1,n2- 1] * R[ 3- 1,n3- 1] # g
+        Rx1x2x3[i,7] = R[ 2- 1,n1- 1] * R[ 2- 1,n2- 1] * R[ 3- 1,n3- 1] \
+                       + R[ 2- 1,n1- 1] * R[ 3- 1,n2- 1] * R[ 2- 1,n3- 1] \
+                       + R[ 3- 1,n1- 1] * R[ 2- 1,n2- 1] * R[ 2- 1,n3- 1] # h
+        Rx1x2x3[i,8] = R[ 2- 1,n1- 1] * R[ 3- 1,n2- 1] * R[ 3- 1,n3- 1] \
+                       + R[ 3- 1,n1- 1] * R[ 3- 1,n2- 1] * R[ 2- 1,n3- 1] \
+                       + R[ 3- 1,n1- 1] * R[ 2- 1,n2- 1] * R[ 3- 1,n3- 1] # i
+        Rx1x2x3[i,9] = R[ 1- 1,n1- 1] * R[ 2- 1,n2- 1] * R[ 3- 1,n3- 1] \
+                       + R[ 1- 1,n1- 1] * R[ 3- 1,n2- 1] * R[ 2- 1,n3- 1] \
+                       + R[ 2- 1,n1- 1] * R[ 1- 1,n2- 1] * R[ 3- 1,n3- 1] \
+                       + R[ 2- 1,n1- 1] * R[ 3- 1,n2- 1] * R[ 1- 1,n3- 1] \
+                       + R[ 3- 1,n1- 1] * R[ 1- 1,n2- 1] * R[ 2- 1,n3- 1] \
+                       + R[ 3- 1,n1- 1] * R[ 2- 1,n2- 1] * R[ 1- 1,n3- 1] # j
+    # 7*10, fz3~fy(3x2-y2), x3~xyz
+    '''           [     "x3",     "y3",     "z3",    "x2y",    "xy2",    "x2z",    "xz2",    "y2z",    "yz2",    "xyz"] '''
+    F = np.array([[        0,        0,   1/sr15,        0,        0,-3/2/sr15,        0,-3/2/sr15,        0,        0], # fz3
+                  [ -1/2/sr5,        0,        0,        0, -1/2/sr5,        0,    2/sr5,        0,        0,        0], # fxz2
+                  [        0, -1/2/sr5,        0, -1/2/sr5,        0,        0,        0,        0,    2/sr5,        0], # fyz2
+                  [        0,        0,        0,        0,        0,        0,        0,        0,        0,        1], # fxyz
+                  [        0,        0,        0,        0,        0,      1/2,        0,     -1/2,        0,        0], # fz(x2-y2)
+                  [  1/2/sr3,        0,        0,        0,   -sr3/2,        0,        0,        0,        0,        0], # fx(x2-3y2)
+                  [        0, -1/2/sr3,        0,    sr3/2,        0,        0,        0,        0,        0,        0]  # fy(3x2-y2)
+                  ])
+    FR = F @ Rx1x2x3 # 7*10, fz3~fy(3x2-y2), a~j
+    # 7*10, fz3~fy(3x2-y2), a~j
+    '''            [    "a",    "b",    "c",    "d",    "e",    "f",    "g",    "h",    "i",    "j"] '''
+    CF = np.array([[      0,      0,   sr15,      0,      0,      0,      0,      0,      0,      0], # fz3
+                   [      0,      0,      0,      0,      0,      0,  sr5/2,      0,      0,      0], # fxz2
+                   [      0,      0,      0,      0,      0,      0,      0,      0,  sr5/2,      0], # fyz2
+                   [      0,      0,      0,      0,      0,      0,      0,      0,      0,      1], # fxyz
+                   [      0,      0,      3,      0,      0,      2,      0,      0,      0,      0], # fz(x2-y2)
+                   [  2*sr3,      0,      0,      0,      0,      0,  sr3/2,      0,      0,      0], # fx(x2-3y2)
+                   [      0, -2*sr3,      0,      0,      0,      0,      0,      0, -sr3/2,      0]  # fy(3x2-y2)
+                   ])
+    RF = FR @ CF.T
+    return RF.T
+
+
+def space_group_representation_orbitals_all(space_group_matrices_cartesian):
+    """
+    function GetSymOrb(SymXyz) in cd/SymGroup.py
+    :param space_group_matrices_cartesian: space group matrices (affine) under Cartesian basis
+    :return: space group representations on atomic orbitals
+    """
+    num_matrices,_,_=space_group_matrices_cartesian.shape
+    print(f"num_matrices={num_matrices}", file=sys.stderr)  # Send to stderr
+
+    # S: s
+    repr_S=np.ones((num_matrices,1,1))
+    # P: px,py,pz
+    repr_P=copy.deepcopy(space_group_matrices_cartesian[:, :3, :3])
+
+    # D: d orbitals (5x5 representation)
+    # d_xy,d_yz,d_zx,d_(x^2-y^2 ),d_(3z^2-r^2 )
+    repr_D = np.zeros((num_matrices, 5, 5))
+    for i in range(num_matrices):
+        R = space_group_matrices_cartesian[i, :3, :3]
+        repr_D[i] = space_group_representation_D_orbitals(R)
+    # F: f orbitals (7x7 representation)
+    # fz3,fxz2,fyz2,fxyz,fz(x2-y2),fx(x2-3y2),fy(3x2-y2)
+    repr_F = np.zeros((num_matrices, 7, 7))
+    for i in range(num_matrices):
+        R = space_group_matrices_cartesian[i, :3, :3]
+        repr_F[i] = space_group_representation_F_orbitals(R)
+
+    repr_S_P_D_F=[repr_S,repr_P,repr_D,repr_F]
+
+    return repr_S_P_D_F
+
 
 
 in_space_group_file="./read_only/space_group_matrices_Bilbao.txt"
 space_group_matrices=read_space_group(in_space_group_file,space_group)
 space_group_matrices_cartesian=space_group_to_cartesian_basis(space_group_matrices,space_group_basis)
 space_group_matrices_primitive=space_group_to_primitive_cell_basis(space_group_matrices_cartesian,lattice_basis_primitive)
-print(f"space_group_matrices[-1,:,:]={space_group_matrices[-1,:,:]}")
-print(f"space_group_matrices_cartesian[-1,:,:]={space_group_matrices_cartesian[-1,:,:]}")
-print(f"space_group_matrices_primitive[-1,:,:]={space_group_matrices_primitive[-1,:,:]}")
+
+repr_S_P_D_F=space_group_representation_orbitals_all(space_group_matrices_cartesian)
+
+space_group_representations={
+    "space_group_matrices":space_group_matrices.tolist(),
+    "space_group_matrices_cartesian": space_group_matrices_cartesian.tolist(),
+    "space_group_matrices_primitive":space_group_matrices_primitive.tolist(),
+    "repr_S_P_D_F":  [
+        repr_S_P_D_F[0].tolist(),
+        repr_S_P_D_F[1].tolist(),
+        repr_S_P_D_F[2].tolist(),
+        repr_S_P_D_F[3].tolist()
+    ]
+
+}
+
+# output as JSON
+print(json.dumps(space_group_representations, indent=2))

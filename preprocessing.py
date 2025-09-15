@@ -3,6 +3,8 @@ import subprocess
 import sys
 import os
 import json
+import numpy as np
+
 
 argErrCode=20
 if (len(sys.argv)!=2):
@@ -26,7 +28,7 @@ if confResult.returncode != 0:
 # Parse the JSON output
 try:
     parsed_config = json.loads(confResult.stdout)
-    print(parsed_config)
+    # print(parsed_config)
     print("=" * 60)
     print("COMPLETE PARSED CONFIGURATION")
     print("=" * 60)
@@ -41,47 +43,32 @@ try:
     print(f"Space Group: {parsed_config['space_group']}")
 
     # Print space group origin
-    if parsed_config['space_group_origin']:
-        print(f"Space Group Origin: [{', '.join(map(str, parsed_config['space_group_origin']))}]")
-    else:
-        print("Space Group Origin: Not specified")
+    print(f"Space Group Origin: [{', '.join(map(str, parsed_config['space_group_origin']))}]")
 
     # Print lattice basis
-    if parsed_config['lattice_basis']:
-        print("Lattice Basis:")
-        for i, vector in enumerate(parsed_config['lattice_basis']):
-            print(f"  Vector {i+1}: [{', '.join(map(str, vector))}]")
-    else:
-        print("Lattice Basis: Not specified")
+    print("Lattice Basis:")
+    for i, vector in enumerate(parsed_config['lattice_basis']):
+        print(f"  Vector {i+1}: [{', '.join(map(str, vector))}]")
 
     # Print space group basis
-    if parsed_config['space_group_basis']:
-        print("Space Group Basis:")
-        for i, vector in enumerate(parsed_config['space_group_basis']):
-            print(f"  Vector {i+1}: [{', '.join(map(str, vector))}]")
-    else:
-        print("Space Group Basis: Not specified")
+    print("Space Group Basis:")
+    for i, vector in enumerate(parsed_config['space_group_basis']):
+        print(f"  Vector {i+1}: [{', '.join(map(str, vector))}]")
 
     # Print atom types
     print("\nAtom Types:")
-    if parsed_config['atom_types']:
-        for atom_type, info in parsed_config['atom_types'].items():
-            print(f"  {atom_type}:")
-            print(f"    Count: {info['count']}")
-            print(f"    Orbitals: {info['orbitals']}")
-    else:
-        print("  No atom types defined")
+    for atom_type, info in parsed_config['atom_types'].items():
+        print(f"  {atom_type}:")
+        print(f"    Count: {info['count']}")
+        print(f"    Orbitals: {info['orbitals']}")
 
     # Print atom positions
     print(f"\nAtom Positions (Total: {len(parsed_config['atom_positions'])}):")
-    if parsed_config['atom_positions']:
-        for i, pos in enumerate(parsed_config['atom_positions']):
-            print(f"  Position {i+1}:")
-            print(f"    Name: {pos['position_name']}")
-            print(f"    Atom Type: {pos['atom_type']}")
-            print(f"    Coordinates: [{', '.join(map(str, pos['coordinates']))}]")
-    else:
-        print("  No atom positions defined")
+    for i, pos in enumerate(parsed_config['atom_positions']):
+        print(f"  Position {i+1}:")
+        print(f"    Name: {pos['position_name']}")
+        print(f"    Atom Type: {pos['atom_type']}")
+        print(f"    Coordinates: [{', '.join(map(str, pos['coordinates']))}]")
 
 
 except json.JSONDecodeError as e:
@@ -90,7 +77,7 @@ except json.JSONDecodeError as e:
     print("Raw output was:")
     print(confResult.stdout)
     exit(1)
-
+# get parsed_config
 # Convert parsed_config back to JSON string for passing to subprocess
 config_json = json.dumps(parsed_config)
 ##end parsing conf
@@ -155,8 +142,64 @@ if sgr_result.returncode != 0:
     exit(sgr_result.returncode)
 else:
     print("Space group representations generated successfully!")
-    print("Output:")
-    print(sgr_result.stdout)
 
+    # Parse the JSON output containing space group representations
+    try:
+        space_group_representations = json.loads(sgr_result.stdout)
+        # print(space_group_representations)
+        print("\n" + "=" * 60)
+        print("SPACE GROUP REPRESENTATIONS SUMMARY")
+        print("=" * 60)
+
+        # Get dimensions
+        num_operations = len(space_group_representations["space_group_matrices"])
+
+        print(f"Number of space group operations: {num_operations}")
+
+        # Print dimensions of each representation
+        repr_S, repr_P, repr_D, repr_F = space_group_representations["repr_S_P_D_F"]
+
+        print(f"S orbital representations: {len(repr_S)} operations × {len(repr_S[0])}×{len(repr_S[0][0])} matrices")
+        print(f"P orbital representations: {len(repr_P)} operations × {len(repr_P[0])}×{len(repr_P[0][0])} matrices")
+        print(f"D orbital representations: {len(repr_D)} operations × {len(repr_D[0])}×{len(repr_D[0][0])} matrices")
+        print(f"F orbital representations: {len(repr_F)} operations × {len(repr_F[0])}×{len(repr_F[0][0])} matrices")
+
+        # Convert back to NumPy arrays if needed for further processing
+        space_group_matrices = np.array(space_group_representations["space_group_matrices"])
+        space_group_matrices_cartesian = np.array(space_group_representations["space_group_matrices_cartesian"])
+        space_group_matrices_primitive = np.array(space_group_representations["space_group_matrices_primitive"])
+
+        repr_S_np = np.array(repr_S)
+        repr_P_np = np.array(repr_P)
+        repr_D_np = np.array(repr_D)
+        repr_F_np = np.array(repr_F)
+
+        print("\nSpace group representations loaded and converted to NumPy arrays.")
+        print(f"Available matrices:")
+        print(f"  - space_group_matrices: {space_group_matrices.shape}")
+        print(f"  - space_group_matrices_cartesian: {space_group_matrices_cartesian.shape}")
+        print(f"  - space_group_matrices_primitive: {space_group_matrices_primitive.shape}")
+        print(f"  - S orbital representations: {repr_S_np.shape}")
+        print(f"  - P orbital representations: {repr_P_np.shape}")
+        print(f"  - D orbital representations: {repr_D_np.shape}")
+        print(f"  - F orbital representations: {repr_F_np.shape}")
+
+        # Example: Print first space group operation matrix (identity)
+        # print(f"\nFirst space group operation (should be identity):")
+        # print("Cartesian representation:")
+        # print(space_group_matrices_cartesian[0])
+
+    except json.JSONDecodeError as e:
+        print("Error parsing JSON output from space group representations:")
+        print(f"JSON Error: {e}")
+        print("Raw output was:")
+        print(sgr_result.stdout)
+        exit(1)
+
+    except KeyError as e:
+        print(f"Missing key in space group representations output: {e}")
+        print("Available keys:", list(space_group_representations.keys()) if 'space_group_representations' in locals() else "Could not parse JSON")
+        exit(1)
+# get dict space_group_representations
 # end computing space group representations
 #########################################################################################
