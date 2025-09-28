@@ -11,22 +11,22 @@ paramErrCode = 3
 fileNotExistErrCode = 4
 
 if len(sys.argv) != 2:
-    print("wrong number of arguments.")
-    print("usage: python parse_conf.py /path/to/xxx.conf")
+    print("wrong number of arguments.", file=sys.stderr)
+    print("usage: python parse_conf.py /path/to/xxx.conf", file=sys.stderr)
     exit(paramErrCode)
 
 conf_file = sys.argv[1]
 
 # Check if file exists
 if not os.path.exists(conf_file):
-    print(f"file not found: {conf_file}")
+    print(f"file not found: {conf_file}", file=sys.stderr)
     exit(fileNotExistErrCode)
 
 # Pattern definitions
 key_value_pattern = r'^([^=\s]+)\s*=\s*([^=]+)\s*$'
 float_pattern = r"[-+]?(?:\d*\.\d+|\d+)(?:[eE][-+]?\d+)?"
 # Updated to allow optional spaces after semicolon
-atom_oribital_pattern = r'^([A-Za-z]+\d*)\s*=\s*(\d+)\s*;\s*((?:s|px|py|pz|dxy|dxz|dyz|dx2-y2|dz2|fxyz|fx3-3xy2|f3x2y-y3|fxz2|fyz2|fx2-y2z|fz3)(?:\s*,\s*(?:s|px|py|pz|dxy|dxz|dyz|dx2-y2|dz2|fxyz|fx3-3xy2|f3x2y-y3|fxz2|fyz2|fx2-y2z|fz3))*)\s*$'
+atom_orbital_pattern = r'^([A-Za-z]+\d*)\s*=\s*(\d+)\s*;\s*((?:[1-7])?(?:s|px|py|pz|dxy|dxz|dyz|dx2-y2|dz2|fxyz|fx3-3xy2|f3x2y-y3|fxz2|fyz2|fx2-y2z|fz3)(?:\s*,\s*(?:[1-7])?(?:s|px|py|pz|dxy|dxz|dyz|dx2-y2|dz2|fxyz|fx3-3xy2|f3x2y-y3|fxz2|fyz2|fx2-y2z|fz3))*)\s*$'
 name_pattern = r'^name\s*=\s*([a-zA-Z0-9_-]+)\s*$'
 dim_pattern = r"^dim\s*=\s*(\d+)\s*$"
 neighbors_pattern = r"^neighbors\s*=\s*(\d+)\s*$"
@@ -174,12 +174,12 @@ def parseConfContents(file):
                 # print(f"space_group_basis={vectors}")
                 continue
 
-            # Match atom type definitions (A=1;s, B=1;s, O=3;s)
-            atom_match = re.match(atom_oribital_pattern, oneLine)
+            # Match atom type definitions (B=1;2pz,2s \n N=1;2px,2py)
+            atom_match = re.match(atom_orbital_pattern, oneLine)
             if atom_match:
                 atom_type = atom_match.group(1)  # A, B, O
                 atom_count = int(atom_match.group(2))  # 1, 1, 3
-                orbitals = atom_match.group(3).strip()  # s
+                orbitals = [o.strip() for o in atom_match.group(3).split(',')]
 
                 config['atom_types'][atom_type] = {
                     'count': atom_count,
@@ -209,10 +209,10 @@ def parseConfContents(file):
                 continue
 
             # If no pattern matched, log unrecognized line
-            print(f"Unrecognized key-value line: {oneLine}")
+            print(f"Unrecognized key-value line: {oneLine}", file=sys.stderr)
 
         else:
-            print("line: " + oneLine + " is discarded.")
+            print("line: " + oneLine + " is discarded.", file=sys.stderr)
 
     return config
 
@@ -220,4 +220,4 @@ def parseConfContents(file):
 parsed_config = parseConfContents(conf_file)
 
 # output the parsed config as JSON
-print(json.dumps(parsed_config, indent=2))
+print(json.dumps(parsed_config, indent=2), file=sys.stdout)

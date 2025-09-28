@@ -16,7 +16,7 @@ try:
     parsed_config = json.loads(config_json)
 
 except json.JSONDecodeError as e:
-    print(f"Error parsing JSON input: {e}")
+    print(f"Error parsing JSON input: {e}", file=sys.stderr)
     exit(json_err_code)
 
 ## assume that everything is under primitive cell basis
@@ -48,10 +48,10 @@ try:
 
 
 except KeyError as e:
-    print(f"Error: Required key {e} not found in configuration")
+    print(f"Error: Required key {e} not found in configuration", file=sys.stderr)
     exit(key_err_code)
 except ValueError as e:
-    print(f"Error with configuration data: {e}")
+    print(f"Error with configuration data: {e}", file=sys.stderr)
     exit(val_err_code)
 
 def removeCommentsAndEmptyLines(file):
@@ -290,29 +290,29 @@ def space_group_representation_orbitals_all(space_group_matrices_cartesian):
     :return: space group representations on atomic orbitals
     """
     num_matrices,_,_=space_group_matrices_cartesian.shape
-    print(f"num_matrices={num_matrices}", file=sys.stderr)  # Send to stderr
+    # print(f"num_matrices={num_matrices}", file=sys.stderr)  # Send to stderr
 
     # S: s
-    repr_S=np.ones((num_matrices,1,1))
+    repr_s=np.ones((num_matrices,1,1))
     # P: px,py,pz
-    repr_P=copy.deepcopy(space_group_matrices_cartesian[:, :3, :3])
+    repr_p=copy.deepcopy(space_group_matrices_cartesian[:, :3, :3])
 
     # D: d orbitals (5x5 representation)
     # d_xy,d_yz,d_zx,d_(x^2-y^2 ),d_(3z^2-r^2 )
-    repr_D = np.zeros((num_matrices, 5, 5))
+    repr_d = np.zeros((num_matrices, 5, 5))
     for i in range(num_matrices):
         R = space_group_matrices_cartesian[i, :3, :3]
-        repr_D[i] = space_group_representation_D_orbitals(R)
+        repr_d[i] = space_group_representation_D_orbitals(R)
     # F: f orbitals (7x7 representation)
     # fz3,fxz2,fyz2,fxyz,fz(x2-y2),fx(x2-3y2),fy(3x2-y2)
-    repr_F = np.zeros((num_matrices, 7, 7))
+    repr_f = np.zeros((num_matrices, 7, 7))
     for i in range(num_matrices):
         R = space_group_matrices_cartesian[i, :3, :3]
-        repr_F[i] = space_group_representation_F_orbitals(R)
+        repr_f[i] = space_group_representation_F_orbitals(R)
 
-    repr_S_P_D_F=[repr_S,repr_P,repr_D,repr_F]
+    repr_s_p_d_f=[repr_s,repr_p,repr_d,repr_f]
 
-    return repr_S_P_D_F
+    return repr_s_p_d_f
 
 
 
@@ -321,20 +321,20 @@ space_group_matrices=read_space_group(in_space_group_file,space_group)
 space_group_matrices_cartesian=space_group_to_cartesian_basis(space_group_matrices,space_group_basis)
 space_group_matrices_primitive=space_group_to_primitive_cell_basis(space_group_matrices_cartesian,lattice_basis_primitive)
 
-repr_S_P_D_F=space_group_representation_orbitals_all(space_group_matrices_cartesian)
+repr_s_p_d_f=space_group_representation_orbitals_all(space_group_matrices_cartesian)
 
 space_group_representations={
-    "space_group_matrices":space_group_matrices.tolist(),
-    "space_group_matrices_cartesian": space_group_matrices_cartesian.tolist(),
-    "space_group_matrices_primitive":space_group_matrices_primitive.tolist(),
-    "repr_S_P_D_F":  [
-        repr_S_P_D_F[0].tolist(),
-        repr_S_P_D_F[1].tolist(),
-        repr_S_P_D_F[2].tolist(),
-        repr_S_P_D_F[3].tolist()
-    ]
+    "space_group_matrices":space_group_matrices.tolist(),#Bilbal space group matrices
+    "space_group_matrices_cartesian": space_group_matrices_cartesian.tolist(),#SymXyzt
+    "space_group_matrices_primitive":space_group_matrices_primitive.tolist(),#SymLvSG
+    "repr_s_p_d_f":  [
+        repr_s_p_d_f[0].tolist(),
+        repr_s_p_d_f[1].tolist(),
+        repr_s_p_d_f[2].tolist(),
+        repr_s_p_d_f[3].tolist()
+    ]#SymOrb
 
 }
 
 # output as JSON
-print(json.dumps(space_group_representations, indent=2))
+print(json.dumps(space_group_representations, indent=2), file=sys.stdout)

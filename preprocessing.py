@@ -100,12 +100,13 @@ sanity_result = subprocess.run(
 #open the following line for debugging
 # print(f"Output: {sanity_result.stdout}")
 print(f"Exit code: {sanity_result.returncode}")
+
 # Check sanity check results
 if sanity_result.returncode != 0:
     print("Sanity check failed!")
     print(f"return code={sanity_result.returncode}")
     print("Error output:")
-    print(sanity_result.stdout)
+    print(sanity_result.stderr)
     exit(sanity_result.returncode)
 else:
     print("Sanity check passed!")
@@ -117,7 +118,7 @@ else:
 
 #########################################################################################
 # computing space group representations
-
+#get repr_s_np, repr_p_np, repr_d_np, repr_f_np
 print("\n" + "=" * 60)
 print("COMPUTING SPACE GROUP REPRESENTATIONS")
 print("=" * 60)
@@ -157,32 +158,33 @@ else:
         print(f"Number of space group operations: {num_operations}")
 
         # Print dimensions of each representation
-        repr_S, repr_P, repr_D, repr_F = space_group_representations["repr_S_P_D_F"]
+        repr_s, repr_p, repr_d, repr_f = space_group_representations["repr_s_p_d_f"]
 
-        print(f"S orbital representations: {len(repr_S)} operations × {len(repr_S[0])}×{len(repr_S[0][0])} matrices")
-        print(f"P orbital representations: {len(repr_P)} operations × {len(repr_P[0])}×{len(repr_P[0][0])} matrices")
-        print(f"D orbital representations: {len(repr_D)} operations × {len(repr_D[0])}×{len(repr_D[0][0])} matrices")
-        print(f"F orbital representations: {len(repr_F)} operations × {len(repr_F[0])}×{len(repr_F[0][0])} matrices")
+        print(f"s orbital representations: {len(repr_s)} operations × {len(repr_s[0])}×{len(repr_s[0][0])} matrices")
+        print(f"p orbital representations: {len(repr_p)} operations × {len(repr_p[0])}×{len(repr_p[0][0])} matrices")
+        print(f"d orbital representations: {len(repr_d)} operations × {len(repr_d[0])}×{len(repr_d[0][0])} matrices")
+        print(f"f orbital representations: {len(repr_f)} operations × {len(repr_f[0])}×{len(repr_f[0][0])} matrices")
 
         # Convert back to NumPy arrays if needed for further processing
         space_group_matrices = np.array(space_group_representations["space_group_matrices"])
         space_group_matrices_cartesian = np.array(space_group_representations["space_group_matrices_cartesian"])
         space_group_matrices_primitive = np.array(space_group_representations["space_group_matrices_primitive"])
 
-        repr_S_np = np.array(repr_S)
-        repr_P_np = np.array(repr_P)
-        repr_D_np = np.array(repr_D)
-        repr_F_np = np.array(repr_F)
+        repr_s_np = np.array(repr_s)
+        repr_p_np = np.array(repr_p)
+        repr_d_np = np.array(repr_d)
+        repr_f_np = np.array(repr_f)
+
 
         print("\nSpace group representations loaded and converted to NumPy arrays.")
         print(f"Available matrices:")
         print(f"  - space_group_matrices: {space_group_matrices.shape}")
         print(f"  - space_group_matrices_cartesian: {space_group_matrices_cartesian.shape}")
         print(f"  - space_group_matrices_primitive: {space_group_matrices_primitive.shape}")
-        print(f"  - S orbital representations: {repr_S_np.shape}")
-        print(f"  - P orbital representations: {repr_P_np.shape}")
-        print(f"  - D orbital representations: {repr_D_np.shape}")
-        print(f"  - F orbital representations: {repr_F_np.shape}")
+        print(f"  - s orbital representations: {repr_s_np.shape}")
+        print(f"  - p orbital representations: {repr_p_np.shape}")
+        print(f"  - d orbital representations: {repr_d_np.shape}")
+        print(f"  - f orbital representations: {repr_f_np.shape}")
 
         # Example: Print first space group operation matrix (identity)
         # print(f"\nFirst space group operation (should be identity):")
@@ -201,5 +203,30 @@ else:
         print("Available keys:", list(space_group_representations.keys()) if 'space_group_representations' in locals() else "Could not parse JSON")
         exit(1)
 # get dict space_group_representations
+# space_group_representations contains space_group_matrices, space_group_matrices_cartesian(SymXyzt), space_group_matrices_primitive(SymLvSG)
+# repr_s_p_d_f (SymOrb)
 # end computing space group representations
+#########################################################################################
+
+#########################################################################################
+# complete the orbitals
+print("\n" + "=" * 60)
+print("COMPLETING ORBITALS")
+print("=" * 60)
+
+# Combine parsed_config and space_group_representations into a single dictionary
+combined_input = {
+    "parsed_config": parsed_config,
+    "space_group_representations": space_group_representations
+}
+# Convert to JSON string for passing to subprocess
+combined_input_json = json.dumps(combined_input)
+completing_result = subprocess.run(
+    ["python3", "./symmetry/complete_orbitals.py"],
+    input=combined_input_json,
+    capture_output=True,
+    text=True
+)
+print(completing_result.stderr)
+# complete the orbitals end
 #########################################################################################

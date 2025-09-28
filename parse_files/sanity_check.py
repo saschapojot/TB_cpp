@@ -22,7 +22,7 @@ try:
     parsed_config = json.loads(config_json)
 
 except json.JSONDecodeError as e:
-    print(f"Error parsing JSON input: {e}")
+    print(f"Error parsing JSON input: {e}", file=sys.stderr)
     exit(jsonErr)
 
 
@@ -68,23 +68,23 @@ def check_matrix_condition(matrix, matrix_name="Matrix", det_threshold=1e-12, co
 
 # Check for required matrix fields
 if 'lattice_basis' not in parsed_config or not parsed_config['lattice_basis']:
-    print("Error: Missing or empty required field 'lattice_basis'")
+    print("Error: Missing or empty required field 'lattice_basis'", file=sys.stderr)
     exit(matrix_not_exist_error)
 
 if 'space_group_basis' not in parsed_config or not parsed_config['space_group_basis']:
-    print("Error: Missing or empty required field 'space_group_basis'")
+    print("Error: Missing or empty required field 'space_group_basis'", file=sys.stderr)
     exit(matrix_not_exist_error)
 
 
 # Check matrix conditions
 is_valid, error_msg = check_matrix_condition(parsed_config['lattice_basis'], "Lattice basis")
 if not is_valid:
-    print(f"Error: {error_msg}")
+    print(f"Error: {error_msg}", file=sys.stderr)
     exit(matrix_cond_error)
 
 is_valid, error_msg = check_matrix_condition(parsed_config['space_group_basis'], "Space group basis")
 if not is_valid:
-    print(f"Error: {error_msg}")
+    print(f"Error: {error_msg}", file=sys.stderr)
     exit(matrix_cond_error)
 
 # end checking matrices
@@ -206,7 +206,7 @@ def check_duplicate_positions(parsed_config, tolerance=1e-6):
 # Check atom positions match atom counts
 is_valid, error_msg = check_atom_positions(parsed_config)
 if not is_valid:
-    print(f"Error: {error_msg}")
+    print(f"Error: {error_msg}", file=sys.stderr)
     exit(atom_position_error)
 
 # Debug output before atom position check
@@ -219,8 +219,8 @@ if not is_valid:
 # Check for duplicate positions
 is_valid, error_msg = check_duplicate_positions(parsed_config)
 if not is_valid:
-    print(f"Error: {error_msg}")
+    print(f"Error: {error_msg}", file=sys.stderr)
     exit(duplicate_position_error)
 #check space group
-
-print("SUCCESS: All sanity checks passed!")
+print("yyyyyyyyyyyyyy",file=sys.stderr)
+print("SUCCESS: All sanity checks passed!", file=sys.stdout)
