@@ -26,7 +26,7 @@ if not os.path.exists(conf_file):
 key_value_pattern = r'^([^=\s]+)\s*=\s*([^=]+)\s*$'
 float_pattern = r"[-+]?(?:\d*\.\d+|\d+)(?:[eE][-+]?\d+)?"
 # Updated to allow optional spaces after semicolon
-atom_orbital_pattern = r'^([A-Za-z]+\d*)\s*=\s*(\d+)\s*;\s*((?:[1-7])?(?:s|px|py|pz|dxy|dxz|dyz|dx2-y2|dz2|fxyz|fx3-3xy2|f3x2y-y3|fxz2|fyz2|fx2-y2z|fz3)(?:\s*,\s*(?:[1-7])?(?:s|px|py|pz|dxy|dxz|dyz|dx2-y2|dz2|fxyz|fx3-3xy2|f3x2y-y3|fxz2|fyz2|fx2-y2z|fz3))*)\s*$'
+atom_orbital_pattern = r'^([A-Za-z]+\d*)\s*=\s*(\d+)\s*;\s*([1-7](?:s|px|py|pz|dxy|dxz|dyz|dx2-y2|dz2|fxyz|fx3-3xy2|f3x2y-y3|fxz2|fyz2|fx2-y2z|fz3)(?:\s*,\s*[1-7](?:s|px|py|pz|dxy|dxz|dyz|dx2-y2|dz2|fxyz|fx3-3xy2|f3x2y-y3|fxz2|fyz2|fx2-y2z|fz3))*)\s*$'
 name_pattern = r'^name\s*=\s*([a-zA-Z0-9_-]+)\s*$'
 dim_pattern = r"^dim\s*=\s*(\d+)\s*$"
 neighbors_pattern = r"^neighbors\s*=\s*(\d+)\s*$"
