@@ -159,9 +159,9 @@ for j in range(0,num_operations):
 
 #IndNonZero
 non_zero_spdf_combined=np.sum(np.abs(spdf_combined),axis=0) >1e-6
-print(f"parsed_config={parsed_config}",file=sys.stderr)
+# print(f"parsed_config={parsed_config}",file=sys.stderr)
 atom_orbital_vectors=build_orbital_vectors(parsed_config)
-print(f"atom_orbital_vectors={atom_orbital_vectors}",file=sys.stderr)
+# print(f"atom_orbital_vectors={atom_orbital_vectors}",file=sys.stderr)
 
 # Update atom_orbital_vectors based on symmetry coupling
 updated_atom_orbital_vectors = {}
@@ -186,11 +186,11 @@ for atom_name, orbital_vector in atom_orbital_vectors.items():
     if len(added_indices) > 0:
         added_orbitals = [k for k, v in orbital_map.items() if v in added_indices]
         added_orbitals_dict[atom_name] = added_orbitals  # Store in dictionary
-        print(f"Atom {atom_name}: Added orbitals {added_orbitals} by symmetry", file=sys.stderr)
+        # print(f"Atom {atom_name}: Added orbitals {added_orbitals} by symmetry", file=sys.stderr)
     else:
         added_orbitals_dict[atom_name] = []  # Empty list if no orbitals added
 
 # Replace the original vectors with updated ones
 atom_orbital_vectors = updated_atom_orbital_vectors
-print(f"atom_orbital_vectors={atom_orbital_vectors}", file=sys.stderr)
-print(f"added_orbitals_dict={added_orbitals_dict}", file=sys.stderr)
+# print(f"atom_orbital_vectors={atom_orbital_vectors}", file=sys.stderr)
+# print(f"added_orbitals_dict={added_orbitals_dict}", file=sys.stderr)
