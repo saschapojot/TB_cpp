@@ -105,7 +105,7 @@ spdf_combined=np.zeros((num_operations,orbital_max_dim,orbital_max_dim))
 def build_orbital_vectors(parsed_config):
     """
     Build a length 78 orbital vector for each atom in the configuration
-
+    represent active orbitals
     :param parsed_config: Dictionary containing atom types and their orbitals
     :return: Dictionary mapping atom position names to their orbital vectors
     """
@@ -160,7 +160,7 @@ for j in range(0,num_operations):
 #IndNonZero
 non_zero_spdf_combined=np.sum(np.abs(spdf_combined),axis=0) >1e-6
 # print(f"parsed_config={parsed_config}",file=sys.stderr)
-atom_orbital_vectors=build_orbital_vectors(parsed_config)
+atom_orbital_vectors=build_orbital_vectors(parsed_config)#holding active atomic orbitals labeled by 1
 # print(f"atom_orbital_vectors={atom_orbital_vectors}",file=sys.stderr)
 
 # Update atom_orbital_vectors based on symmetry coupling
@@ -191,6 +191,53 @@ for atom_name, orbital_vector in atom_orbital_vectors.items():
         added_orbitals_dict[atom_name] = []  # Empty list if no orbitals added
 
 # Replace the original vectors with updated ones
-atom_orbital_vectors = updated_atom_orbital_vectors
-# print(f"atom_orbital_vectors={atom_orbital_vectors}", file=sys.stderr)
-# print(f"added_orbitals_dict={added_orbitals_dict}", file=sys.stderr)
+atom_orbital_vectors = updated_atom_orbital_vectors#labeling active orbitals by 1
+print(f"atom_orbital_vectors={atom_orbital_vectors}", file=sys.stderr)
+print(f"added_orbitals_dict={added_orbitals_dict}", file=sys.stderr)
+
+# Extract symmetry representations acting on each atom's active orbitals
+repr_on_active_orbitals = {}
+
+for atom_name, orbital_vector in atom_orbital_vectors.items():
+    # Find indices of active orbitals for this atom
+    active_indices = np.where(orbital_vector == 1)[0]
+
+    if len(active_indices) > 0:
+        # Create index arrays for extracting submatrices
+        idx = np.ix_(active_indices, active_indices)
+
+        # Extract the symmetry matrices for just these orbitals
+        repr_matrices_for_atom = []
+        for sym_op in range(num_operations):
+            # Extract the submatrix from spdf_combined for this symmetry operation
+            submatrix = spdf_combined[sym_op][idx]
+            repr_matrices_for_atom.append(submatrix)
+
+        repr_on_active_orbitals[atom_name] = np.array(repr_matrices_for_atom)
+
+        print(f"Atom {atom_name}: Extracted {num_operations} representation matrices of size {len(active_indices)}x{len(active_indices)}", file=sys.stderr)
+    else:
+        repr_on_active_orbitals[atom_name] = np.array([])
+        print(f"Atom {atom_name}: No active orbitals", file=sys.stderr)
+
+# Verify the extraction (optional debugging)
+for atom_name, repr_matrices in repr_on_active_orbitals.items():
+    if repr_matrices.size > 0:
+        print(f"\nAtom {atom_name}:", file=sys.stderr)
+        print(f"  Number of symmetry operations: {repr_matrices.shape[0]}", file=sys.stderr)
+        print(f"  Representation matrix dimension: {repr_matrices.shape[1]}x{repr_matrices.shape[2]}", file=sys.stderr)
+
+        # Get the orbital names for this atom
+        active_indices = np.where(atom_orbital_vectors[atom_name] == 1)[0]
+        active_orbital_names = [name for name, idx in orbital_map.items() if idx in active_indices]
+        print(f"  Active orbitals: {active_orbital_names}", file=sys.stderr)
+
+# Add to output if needed
+output_data = {
+    "updated_orbital_vectors": {name: vec.tolist() for name, vec in atom_orbital_vectors.items()},
+    "added_orbitals": added_orbitals_dict,
+    "representations_on_active_orbitals": {name: matrices.tolist() for name, matrices in repr_on_active_orbitals.items()}
+}
+
+# Output as JSON
+print(json.dumps(output_data),file=sys.stdout)
