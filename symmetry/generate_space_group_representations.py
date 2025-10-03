@@ -57,6 +57,13 @@ try:
     # Each row is a basis vector in Cartesian coordinates
     space_group_basis = parsed_config['space_group_basis']
     space_group_basis = np.array(space_group_basis)
+    # Convert Bilbao origin to Cartesian coordinates
+    space_group_origin_cart = space_group_origin @ space_group_basis
+
+    space_group_origin_frac_primitive = space_group_origin_cart @ np.linalg.inv(lattice_basis_primitive.T)
+
+
+
 
 except KeyError as e:
     print(f"Error: Required key {e} not found in configuration", file=sys.stderr)
@@ -482,6 +489,10 @@ space_group_representations = {
         repr_s_p_d_f[2].tolist(),  # d orbital representation
         repr_s_p_d_f[3].tolist()   # f orbital representation
     ]
+    ,
+    # Space group origin in different coordinate systems
+    "space_group_origin_cartesian": space_group_origin_cart.tolist(),
+    "space_group_origin_fractional_primitive": space_group_origin_frac_primitive.tolist()
 }
 
 # Output as JSON to stdout

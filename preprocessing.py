@@ -176,14 +176,23 @@ else:
         num_operations = len(space_group_representations["space_group_matrices"])
         print(f"Number of space group operations: {num_operations}")
 
+        # Print space group origin in different coordinate systems
+        print("\nSpace Group Origin:")
+        origin_cart = space_group_representations["space_group_origin_cartesian"]
+        origin_frac_prim = space_group_representations["space_group_origin_fractional_primitive"]
+        print(f"  Bilbao (fractional in space group basis): [{', '.join(map(str, parsed_config['space_group_origin']))}]")
+        print(f"  Cartesian: [{', '.join(f'{x:.6f}' for x in origin_cart)}]")
+        print(f"  Fractional (primitive cell basis): [{', '.join(f'{x:.6f}' for x in origin_frac_prim)}]")
+
         # Extract orbital representations (s, p, d, f)
         repr_s, repr_p, repr_d, repr_f = space_group_representations["repr_s_p_d_f"]
 
         # Print dimensions of representation matrices
-        print(f"s orbital representations: {len(repr_s)} operations × {len(repr_s[0])}×{len(repr_s[0][0])} matrices")
-        print(f"p orbital representations: {len(repr_p)} operations × {len(repr_p[0])}×{len(repr_p[0][0])} matrices")
-        print(f"d orbital representations: {len(repr_d)} operations × {len(repr_d[0])}×{len(repr_d[0][0])} matrices")
-        print(f"f orbital representations: {len(repr_f)} operations × {len(repr_f[0])}×{len(repr_f[0][0])} matrices")
+        print(f"\nOrbital Representations:")
+        print(f"  s orbitals: {len(repr_s)} operations × {len(repr_s[0])}×{len(repr_s[0][0])} matrices")
+        print(f"  p orbitals: {len(repr_p)} operations × {len(repr_p[0])}×{len(repr_p[0][0])} matrices")
+        print(f"  d orbitals: {len(repr_d)} operations × {len(repr_d[0])}×{len(repr_d[0][0])} matrices")
+        print(f"  f orbitals: {len(repr_f)} operations × {len(repr_f[0])}×{len(repr_f[0][0])} matrices")
 
         # Convert to NumPy arrays for further processing
         space_group_matrices = np.array(space_group_representations["space_group_matrices"])
@@ -396,20 +405,48 @@ print("=" * 60)
 print("\n" + "=" * 60)
 print("FINDING NEIGHBORING ATOMS")
 print("=" * 60)
-
-print(f"Parsed configuration summary:")
-for key, value in parsed_config.items():
-    print(f"  {key}: {value}")
+#
+# print(f"Parsed configuration summary:")
+# for key, value in parsed_config.items():
+#     print(f"  {key}: {value}")
 
 # Run find_neighbors.py to identify neighboring atoms
 find_neighbor_result = subprocess.run(
     ["python3", "./symmetry/find_neighbors.py"],
-    input=json.dumps(parsed_config),
+    input=combined_input_json,
     capture_output=True,
     text=True
 )
 
-# Print any error messages
+# Print any error messages from stderr
 if find_neighbor_result.stderr:
-    print("Debug output:")
+    print("Debug output from find_neighbors.py:")
     print(find_neighbor_result.stderr)
+
+# Check if the subprocess completed successfully
+if find_neighbor_result.returncode != 0:
+    print(f"Error: find_neighbors.py exited with code {find_neighbor_result.returncode}")
+    sys.exit(find_neighbor_result.returncode)
+
+# Parse the atom_pairs from stdout (JSON format)
+try:
+    atom_pairs = json.loads(find_neighbor_result.stdout)
+    print(f"\nSuccessfully loaded {len(atom_pairs)} atom pairs")
+
+    # Optional: Print summary statistics
+    if atom_pairs:
+        distances = [pair['distance'] for pair in atom_pairs]
+        unique_distances = sorted(set(distances))
+        print(f"Number of unique distances: {len(unique_distances)}")
+        print(f"Distance range: {min(distances):.6f} to {max(distances):.6f}")
+
+except json.JSONDecodeError as e:
+    print(f"Error: Failed to parse JSON output from find_neighbors.py")
+    print(f"JSON decode error: {e}")
+    print(f"Output received (first 500 chars):")
+    print(find_neighbor_result.stdout[:500])
+    sys.exit(1)
+
+# Now atom_pairs is available as a Python list of dictionaries
+# Each element has the structure defined in find_neighbors.py
+print("\nAtom pairs are ready for further processing")

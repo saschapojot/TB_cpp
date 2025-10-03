@@ -15,12 +15,15 @@ val_err_code = 6
 # STEP 1: Read and parse JSON input from stdin
 # ==============================================================================
 try:
-    config_json = sys.stdin.read()
-    parsed_config = json.loads(config_json)
-
+    combined_input_json = sys.stdin.read()
+    combined_input = json.loads(combined_input_json)
 except json.JSONDecodeError as e:
     print(f"Error parsing JSON input: {e}", file=sys.stderr)
     exit(json_err_code)
+
+# Split the combined input into two main components
+parsed_config = combined_input["parsed_config"]
+space_group_representations = combined_input["space_group_representations"]
 
 
 # ==============================================================================
@@ -40,9 +43,8 @@ try:
     # Original variable name: Nbr
     neighbors = parsed_config["neighbors"]
 
-    # Fractional coordinates of Bilbao space group origin
-    # Original variable name: originBilbao
-    space_group_origin = parsed_config["space_group_origin"]
+    # Bilbao space group origin under Cartesian basis
+    space_group_origin_cart = np.array(space_group_representations["space_group_origin_cartesian"])
 
     # Dimensionality of the system (2D or 3D)
     dim = parsed_config["dim"]
@@ -109,7 +111,22 @@ for n0 in range(-N0, N0+1):
 # ==============================================================================
 # Cartesian coordinates for atoms in the origin cell [0,0,0]
 # Formula: cart_coords = frac_coords @ lattice_basis
-atom_coordinates_cart_origin = atom_coordinates_frac @ lattice_basis_primitive
+atom_coordinates_cart_cell_000 = atom_coordinates_frac @ lattice_basis_primitive
+
+# Shift all atomic positions by the space group origin
+# This aligns positions with the Bilbao convention's origin choice
+#
+# Broadcasting explanation:
+#   atom_coordinates_cart_cell_000 has shape (N_atoms, 3)
+#   space_group_origin_cart has shape (3,)
+#   NumPy automatically broadcasts (3,) to (N_atoms, 3) by repeating the vector
+#   for each atom, so this is equivalent to:
+#       for i in range(N_atoms):
+#           atom_coordinates_cart_cell_000[i, :] -= space_group_origin_cart
+#   Example:
+#       [[1.0, 2.0, 3.0],     [[0.5, 0.5, 0.5],     [[0.5, 1.5, 2.5],
+#        [4.0, 5.0, 6.0]]  -   [0.5, 0.5, 0.5]]  =   [3.5, 4.5, 5.5]]
+atom_coordinates_cart_cell_000 = atom_coordinates_cart_cell_000 - space_group_origin_cart
 
 # Cartesian coordinates for all atoms in neighboring cells
 atoms_cart_coords = np.zeros((len(atoms_in_cells), 3))
@@ -122,8 +139,8 @@ for i, atom in enumerate(atoms_in_cells):
                         n1*lattice_basis_primitive[1,:] +
                         n2*lattice_basis_primitive[2,:])
 
-    # Atom position within the cell
-    atom_position = atom_coordinates_frac[j,:] @ lattice_basis_primitive
+    # Atom position within the cell (shifted by space group origin)
+    atom_position = atom_coordinates_frac[j,:] @ lattice_basis_primitive - space_group_origin_cart
 
     # Total position = cell_translation + atom_position_in_cell
     atoms_cart_coords[i,:] = cell_translation + atom_position
@@ -141,7 +158,7 @@ for i in range(atom_num_in_1_cell):  # Atoms in origin cell [0,0,0]
     for j, atom_j in enumerate(atoms_in_cells):  # Atoms in all cells
 
         # Calculate distance between the two atoms
-        displacement = atoms_cart_coords[j] - atom_coordinates_cart_origin[i]
+        displacement = atoms_cart_coords[j] - atom_coordinates_cart_cell_000[i]
         distance = np.linalg.norm(displacement)
         distance = round(distance, num_digits)  # Truncate to num_digits decimal places
 
@@ -155,15 +172,15 @@ for i in range(atom_num_in_1_cell):  # Atoms in origin cell [0,0,0]
                 'position_name': atom_position_names[i],
                 'atom_type': atom_types[i],
                 'frac_coords': atom_coordinates_frac[i].tolist(),      # Convert to list
-                'cart_coords': atom_coordinates_cart_origin[i].tolist()  # Convert to list
+                'cart_coords': atom_coordinates_cart_cell_000[i].tolist()  # Already shifted
             },
             'atom_at_neighbor_cell': {
-                'cell': atom_j['cell'],  # Already a list, no need to copy
+                'cell': atom_j['cell'],
                 'atom_index': atom_j['atom_index'],
                 'position_name': atom_j['position_name'],
                 'atom_type': atom_j['atom_type'],
-                'frac_coords': atom_j['frac_coords'],  # Already converted to list in STEP 3
-                'cart_coords': atoms_cart_coords[j].tolist(),  # Convert to list
+                'frac_coords': atom_j['frac_coords'],
+                'cart_coords': atoms_cart_coords[j].tolist(),  # Already shifted
                 'global_index': atom_j['global_index']
             }
         }
@@ -188,8 +205,8 @@ distance_to_index = {dist: idx for idx, dist in enumerate(unique_distances)}
 # Add distance classification to each pair
 for pair in atom_pairs:
     distance = pair['distance']
-    pair['distance_index'] = distance_to_index[distance]              # Index of distance bin
-    pair['unique_distance_value'] = unique_distances[distance_to_index[distance]]  # Canonical distance value
+    pair['distance_index'] = distance_to_index[distance]
+    pair['unique_distance_value'] = unique_distances[distance_to_index[distance]]
 
 
 # ==============================================================================
