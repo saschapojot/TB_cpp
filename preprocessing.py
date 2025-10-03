@@ -412,7 +412,7 @@ print("=" * 60)
 
 # Run find_neighbors.py to identify neighboring atoms
 find_neighbor_result = subprocess.run(
-    ["python3", "./symmetry/find_neighbors.py"],
+    ["python3", "./hoppin_term_relations/find_neighbors.py"],
     input=combined_input_json,
     capture_output=True,
     text=True
