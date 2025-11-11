@@ -1,0 +1,172 @@
+@startuml data_structures_vertical_grouped
+
+' ============================================
+' Tree and Forest Structure - GROUPED VERTICAL
+' Uses packages to control layout
+' ============================================
+
+top to bottom direction
+scale 1.5
+
+skinparam classAttributeIconSize 0
+skinparam backgroundColor #FFFFFF
+skinparam roundcorner 5
+skinparam shadowing false
+skinparam nodesep 150
+skinparam ranksep 180
+skinparam padding 30
+
+' ============================================
+' Layer 1: Foundation
+' ============================================
+
+package "Layer 1: Foundation" #E3F2FD {
+  class AtomIndex <<ValueObject>> {
+    -wyckoff_position : int
+    -atom_number : int
+    -n0, n1, n2 : int
+    __
+    +to_zeta_index(n0, n1, n2) : (int, int)
+    +equals(other) : bool
+    +hash() : int
+  }
+
+  class Hopping <<ValueObject>> {
+    -to_atom : AtomIndex
+    -from_atom : AtomIndex
+    -space_group_element_id : int
+    __
+    +conjugate() : (from_atom, to_atom)
+    +distance(positions) : float
+    +get_displacement() : Vector3D
+  }
+}
+
+' ============================================
+' Layer 2: Aggregates
+' ============================================
+
+package "Layer 2: Aggregates" #E8F5E9 {
+  class EquivalenceClass <<Aggregate>> {
+    -id : (int, int)
+    -hoppings : List<Hopping>
+    -reference_hopping : Hopping
+    -distance : float
+    __
+    +add_hopping(h : Hopping) : void
+    +size() : int
+    +contains(h : Hopping) : bool
+  }
+}
+
+' ============================================
+' Layer 3: Helpers & Builders
+' ============================================
+
+package "Layer 3: Helpers & Builders" #FFF9C4 {
+  class SymmetryHelper <<Service>> {
+    -crystal : CrystalStructure
+    __
+    +compute_stabilizer(atom : AtomIndex) : List<int>
+    +compute_stabilizer_subset(center, neighbor) : List<int>
+    +apply_symmetry(atom, g_id) : AtomIndex
+  }
+
+  class EquivalenceClassBuilder <<Service>> {
+    -crystal : CrystalStructure
+    -cutoff_radius : float
+    -symmetry_helper : SymmetryHelper
+    __
+    +find_atoms_within_cutoff(center) : List<AtomIndex>
+    +partition_equivalence_classes(center, neighbors) : List<EquivalenceClass>
+    +build_all_equivalence_classes() : List<EquivalenceClass>
+  }
+
+  class ForestBuilder <<Service>> {
+    -equivalence_classes : List<EquivalenceClass>
+    -crystal : CrystalStructure
+    -symmetry_helper : SymmetryHelper
+    __
+    +build_forest() : Forest
+    +find_parent_vertex(equiv_class) : Vertex?
+    +create_root_vertex(equiv_class) : Vertex
+    +create_child_vertex(equiv_class, parent) : Vertex
+  }
+}
+
+' ============================================
+' Layer 4: Graph Structures
+' ============================================
+
+package "Layer 4: Graph Structures" #FCE4EC {
+  enum VertexType <<Enum>> {
+    ROOT
+    CHILD_LINEAR
+    CHILD_HERMITIAN
+  }
+
+  class Vertex <<Entity>> {
+    -id : (int, int)
+    -equivalence_class : EquivalenceClass
+    -vertex_type : VertexType
+    -parent_id : (int, int)?
+    -independent_params : List<(int, int)>
+    -stabilizer_subset : List<int>
+    -constraint_matrix : Matrix
+    __
+    +is_root() : bool
+    +is_child() : bool
+    +get_num_params() : int
+  }
+
+  class Edge <<Entity>> {
+    -parent_vertex_id : (int, int)
+    -child_vertex_id : (int, int)
+    -parent_hopping : Hopping
+    -child_hopping : Hopping
+    -connecting_group_element_id : int?
+    -is_hermitian : bool
+    __
+    +get_transformation_type() : string
+  }
+
+  class Tree <<Aggregate>> {
+    -root : Vertex
+    -vertices : Dict<(int,int), Vertex>
+    -edges : List<Edge>
+    __
+    +add_vertex(v, e) : void
+    +get_depth() : int
+    +get_all_vertices() : List<Vertex>
+  }
+
+  class Forest <<Aggregate>> {
+    -trees : List<Tree>
+    -vertex_lookup : Dict<(int,int), Tree>
+    __
+    +add_tree(t) : void
+    +find_tree_containing(id) : Tree
+    +get_all_root_vertices() : List<Vertex>
+    +get_total_params() : int
+  }
+}
+
+' ============================================
+' Relationships
+' ============================================
+
+Hopping *-- "2" AtomIndex
+EquivalenceClass o-- "1..*" Hopping
+EquivalenceClassBuilder --> SymmetryHelper
+EquivalenceClassBuilder ..> EquivalenceClass : creates
+ForestBuilder --> SymmetryHelper
+ForestBuilder ..> Forest : creates
+Vertex *-- EquivalenceClass
+Vertex --> VertexType
+Edge --> "2" Vertex
+Tree *-- Vertex : root
+Tree o-- Vertex : vertices
+Tree o-- Edge : edges
+Forest o-- Tree : contains
+
+@enduml
